@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "591-sale-crawler-on-google-sheet"
+version = "0.1.0"
+description = ""
+authors = ["JackXu19930319 <49975224+JackXu19930319@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.11.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
