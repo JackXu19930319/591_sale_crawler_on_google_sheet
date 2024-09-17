@@ -1,4 +1,6 @@
+import os
 import random
+import sqlite3
 import time
 
 import requests
@@ -6,6 +8,50 @@ from bs4 import BeautifulSoup
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import urllib.parse
+
+
+def init_db():
+    # 初始化資料庫，創建表格
+    conn = sqlite3.connect('house_data.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS houses (
+            house_id TEXT PRIMARY KEY,
+            link TEXT,
+            price TEXT,
+            area TEXT,
+            floor TEXT,
+            region TEXT,
+            room TEXT,
+            unit_price TEXT,
+            community TEXT,
+            address TEXT,
+            kind TEXT
+        )
+    ''')
+    conn.commit()
+    return conn
+
+
+def insert_house_to_db(conn, house_data):
+    # 將新房屋數據插入資料庫
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO houses (house_id, link, price, area, floor, region, room, unit_price, community, address, kind)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        house_data["house ID"], house_data["LINK"], house_data["價錢"], house_data["坪數"],
+        house_data["樓層"], house_data["區域"], house_data["房型"], house_data["單價"],
+        house_data["社區名"], house_data["巷弄"], house_data["類型"]
+    ))
+    conn.commit()
+
+
+def get_all_house_ids(conn):
+    cursor = conn.cursor()
+    cursor.execute("SELECT house_id FROM houses")  # 從資料庫中選擇所有 house_id
+    house_ids = cursor.fetchall()  # 取得所有結果
+    return [house_id[0] for house_id in house_ids]  # 提取出所有 house_id
 
 
 def line_notify(msg_str, token):
@@ -71,9 +117,11 @@ def insert_data_if_not_exists(json_data):
     sheet = connect_to_gsheet(sheet_name)  # 連接到 Google Sheets
     print(f'connected to {sheet_name}')
     existing_house_ids = get_existing_house_ids(sheet)  # 獲取已存在的 house_id
+    conn = init_db()  # 初始化 SQLite 資料庫
+    existing_house_ids_sql = get_all_house_ids(conn)
 
     for house in json_data["data"]["house_list"]:
-        if house.get("houseid") and str(house["houseid"]) not in existing_house_ids:
+        if house.get("houseid") and str(house["houseid"]) not in existing_house_ids and house.get("houseid") not in existing_house_ids_sql:
             prod_url = f'https://sale.591.com.tw/home/house/detail/2/{str(house["houseid"])}.html'
             try:
                 house_data = {
@@ -90,6 +138,7 @@ def insert_data_if_not_exists(json_data):
                     "類型": house["kind_name"]
                 }
                 sheet.insert_row(list(house_data.values()), 2)
+                insert_house_to_db(conn, house_data)
                 if house.get('area', None) is not None:
                     build_purpose = house['area']
                 else:
@@ -185,14 +234,16 @@ if __name__ == '__main__':
     # 5. 將google api 服務帳號的email加入到google sheet分享名單
 
     # 這邊可以讓你設定token 以及google sheet名稱 以及爬蟲網址 以及休息時間
-    all_delay_limit = 10  # 整個程式最小休息時間（分鐘）
-    all_delay_max = 20  # 整個程式最大休息時間（分鐘）
-    max_pages = 3 # 最大爬取頁數(不指定可以999)
-    line_token = "YOUR_LINE_TOKEN"
-    sheet_name = "YOUR_GOOGLE_SHEET_NAME"
-    url = 'https://sale.591.com.tw/?shType=list&regionid=17&role=1&publish_day=3&totalRows=9&firstRow=0'
+    all_delay_limit = int(os.environ.get('ALL_DELAY_LIMIT', 10))  # 整個程式最小休息時間（分鐘）
+    all_delay_max = int(os.environ.get('ALL_DELAY_MAX', 20))  # 整個程式最大休息時間（分鐘）
+    max_pages = int(os.environ.get("MAX_PAGES", 3))  # 最大爬取頁數(不指定可以999)
+    line_token = os.environ.get("YOUR_LINE_TOKEN", "")
+    sheet_name = os.environ.get("YOUR_GOOGLE_SHEET_ID", "")
+    url = os.environ.get("YOUR_591_URL", 'https://sale.591.com.tw/?shType=list&regionid=17&role=1&publish_day=3&totalRows=9&firstRow=0')
     # 以下不用動///////////////////////////////////////////
     try:
+        conn = init_db()  # 初始化 SQLite 資料庫
+        conn.close()
         delay = int(random.uniform(60, 65))  # 隨機延遲時間 X-Y 秒
         data_json = parse_url_to_json(url)
         while True:  # 永久迴圈，讓 get_591 不斷執行

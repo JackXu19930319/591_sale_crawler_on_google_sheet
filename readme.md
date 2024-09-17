@@ -173,3 +173,15 @@ house ID, LINK, 價錢, 坪數, 樓層, 區域, 房型, 單價, 社區名, 巷�
 3. 將權限設置為 **編輯者**，然後點擊 **發送**。
 
 現在，Google API 服務帳戶將擁有該 Google Sheet 的編輯權限，你的應用程式即可讀取或修改該 Sheet。
+
+# 啟動專案
+## 1. 在專案根目錄，創建.env 檔案，作為環境變數設定.
+```
+ALL_DELAY_LIMIT=10 # 整個程式跑完後最小休息時間（分鐘）
+ALL_DELAY_MAX=20 # 整個程式跑完後最大休息時間（分鐘）
+MAX_PAGES=3 # 爬蟲最大頁數
+YOUR_LINE_TOKEN=YOUR_LINE_TOKEN # line token
+YOUR_GOOGLE_SHEET_ID=YOUR_GOOGLE_SHEET_ID # google sheet id
+YOUR_591_URL= https://sale.591.com.tw/?shType=list&regionid=17&role=1&publish_day=3&totalRows=9&firstRow=0 # 591 url
+```
+## 2. docker compose -f docker_compose.yml up -d

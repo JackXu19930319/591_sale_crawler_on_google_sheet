@@ -1,0 +1,11 @@
+version: '3'
+services:
+  pyclc:
+    container_name: app
+    build:
+      context: .
+      dockerfile: dockerfile
+    pull_policy: always
+    restart: always
+    env_file:
+      - .env
